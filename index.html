@@ -3,291 +3,89 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>브랜드 원페이지 쇼핑몰(데모)</title>
-  <meta name="description" content="정적 호스팅(GitHub Pages)에서 동작하는 장바구니/주문내역 데모. 실제 결제 없음." />
+  <title>득템생활연구소 · 스토어</title>
+  <meta name="description" content="Firebase 연동: Firestore에서 상품을 불러오는 정적 스토어" />
   <style>
-    :root{
-      --bg:#0b0c10; --card:#111318; --muted:#a8b0bf; --text:#e9edf5; --accent:#5be3b4; --accent-2:#7aa8ff; --danger:#ff7a7a;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0; padding:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif; color:var(--text); background:radial-gradient(1200px 600px at 10% -10%, #13223a 0%, transparent 60%) , linear-gradient(#0a0b10, #0b0c10 20%);} 
+    :root{ --bg:#0b0c10; --muted:#a8b0bf; --text:#e9edf5; --accent:#5be3b4; --accent-2:#7aa8ff; }
+    *{box-sizing:border-box} html,body{margin:0; padding:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans KR', sans-serif; color:var(--text); background:#0b0c10;}
     a{color:inherit; text-decoration:none}
-    .container{max-width:1120px; margin:0 auto; padding:0 20px}
-    header{position:sticky; top:0; z-index:30; backdrop-filter:saturate(140%) blur(8px); background:rgba(11,12,16,.7); border-bottom:1px solid rgba(255,255,255,.06)}
+    .container{max-width:1120px; margin:0 auto; padding:0 16px}
+    header{position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px); background:rgba(11,12,16,.7); border-bottom:1px solid rgba(255,255,255,.06)}
     .nav{display:flex; align-items:center; justify-content:space-between; min-height:64px}
-    .brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.2px}
-    .brand-badge{width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg, var(--accent), var(--accent-2)); display:grid; place-items:center; color:#0b0c10; font-weight:900}
-    .nav a, .nav button{opacity:.9; padding:10px 12px; border-radius:10px; border:0; background:transparent; color:var(--text); cursor:pointer}
-    .nav a:hover, .nav button:hover{background:rgba(255,255,255,.07); opacity:1}
-
-    .hero{position:relative; padding:72px 0 56px; overflow:hidden}
-    .hero h1{font-size: clamp(28px, 6vw, 48px); line-height:1.1; margin:0 0 14px}
-    .hero p{font-size:clamp(14px, 2.2vw, 18px); color:var(--muted); margin:0 0 26px}
-    .cta{display:flex; gap:12px; flex-wrap:wrap}
-    .btn{border:1px solid rgba(255,255,255,.16); padding:10px 14px; border-radius:14px; font-weight:600; cursor:pointer; transition:.2s}
-    .btn:hover{transform:translateY(-1px)}
-    .btn.primary{background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#0b0c10; border:0}
-    .btn.ghost{background:#12141a}
-
-    .section{padding:48px 0}
-    .section h2{font-size: clamp(22px, 4.5vw, 32px); margin:0 0 12px}
-    .section p.lead{color:var(--muted); margin:0 0 22px}
-
-    /* grid */
-    .grid{display:grid; grid-template-columns:repeat(1, minmax(0, 1fr)); gap:16px}
-    @media (min-width:580px){ .grid{grid-template-columns:repeat(2, 1fr)} }
-    @media (min-width:920px){ .grid{grid-template-columns:repeat(3, 1fr)} }
-    .card{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:18px; overflow:hidden}
-    .thumb{aspect-ratio:16/11; background:linear-gradient(135deg, #263046, #131722); display:grid; place-items:center; position:relative}
-    .thumb span{opacity:.12; font-size:60px; font-weight:900}
-    .pill{position:absolute; top:10px; left:10px; padding:6px 10px; font-size:12px; border-radius:999px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.18)}
-    .content{padding:14px 14px 16px}
-    .title{font-weight:700; margin:0 0 4px}
-    .meta{font-size:13px; color:var(--muted)}
-    .price{font-weight:800; letter-spacing:.2px; margin-top:8px}
-    .add{margin-top:10px}
-
-    /* drawers & modals */
-    .drawer{position:fixed; top:0; right:-420px; width:min(420px, 100vw); height:100vh; background:#0e1117; border-left:1px solid rgba(255,255,255,.08); box-shadow:-20px 0 50px rgba(0,0,0,.35); transition:right .3s ease; z-index:80; display:flex; flex-direction:column}
-    .drawer.open{right:0}
-    .drawer header{position:sticky; top:0; background:#0e1117}
-    .drawer h3{margin:0; padding:16px 18px}
-    .drawer .body{flex:1; overflow:auto; padding:0 18px}
-    .drawer .foot{padding:18px; border-top:1px solid rgba(255,255,255,.08)}
-
-    .line{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 0; border-bottom:1px dashed rgba(255,255,255,.08)}
-    .qty{display:flex; align-items:center; gap:6px}
-    .qty button{width:26px; height:26px; border-radius:8px; border:1px solid rgba(255,255,255,.18); background:#0c0f14; color:var(--text); cursor:pointer}
-
-    /* table */
-    table{width:100%; border-collapse:collapse}
-    th,td{padding:10px 8px; text-align:left; border-bottom:1px solid rgba(255,255,255,.08)}
-    th{font-size:14px; color:#cfe3ff; background:#0f131b; position:sticky; top:0}
-    .empty{color:var(--muted); text-align:center; padding:24px 8px}
-
-    footer{border-top:1px solid rgba(255,255,255,.08); background:#0b0c10; color:var(--muted)}
-    .footbar{display:flex; flex-wrap:wrap; gap:18px; align-items:center; justify-content:space-between; padding:18px 0}
+    .brand{font-weight:700}
+    .grid{display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:16px; padding:24px 0}
+    @media (min-width:580px){ .grid{grid-template-columns:repeat(2,1fr)} }
+    @media (min-width:920px){ .grid{grid-template-columns:repeat(3,1fr)} }
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden}
+    .thumb{aspect-ratio:16/11; background:#12141a; display:grid; place-items:center}
+    .thumb img{width:100%; height:100%; object-fit:cover}
+    .content{padding:12px 14px 16px}
+    .title{font-weight:800; margin:0 0 6px}
+    .meta{color:var(--muted); font-size:14px}
+    .price{margin-top:8px; font-weight:900}
+    .empty{color:var(--muted); padding:24px; text-align:center}
   </style>
 </head>
 <body>
   <header>
     <div class="container nav">
-      <div class="brand">
-        <div class="brand-badge">D</div>
-        <div>득템생활연구소</div>
-      </div>
+      <div class="brand">득템생활연구소 스토어</div>
       <nav>
-        <a href="#products">제품</a>
-        <a href="#orders">주문내역</a>
-        <button id="openCart">장바구니 <span id="cartCount" style="opacity:.7"></span></button>
+        <a href="admin.html" style="opacity:.7">관리자</a>
       </nav>
     </div>
   </header>
 
-  <main>
-    <section class="hero">
-      <div class="container">
-        <h1>구색맞추기 쇼핑몰 데모<br/>정적 호스팅에서 "장바구니→주문내역"까지</h1>
-        <p>실제 결제는 없지만, 장바구니와 주문 생성/내역 저장(localStorage) 기능이 동작합니다.</p>
-        <div class="cta">
-          <a class="btn primary" href="#products">상품 보러가기</a>
-          <button class="btn ghost" id="openCart2">장바구니 보기</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="products" class="section">
-      <div class="container">
-        <h2>제품</h2>
-        <p class="lead">샘플 상품입니다. 실제 상품/이미지/가격은 자유롭게 교체하세요.</p>
-        <div class="grid" id="productGrid"></div>
-      </div>
-    </section>
-
-    <section id="orders" class="section">
-      <div class="container">
-        <h2>주문내역(데모)</h2>
-        <p class="lead">여기서 보이는 주문은 실제 결제가 아닌, 장바구니에서 생성한 데모 주문입니다.</p>
-        <div id="ordersWrap"></div>
-      </div>
-    </section>
+  <main class="container">
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty" style="display:none">등록된 상품이 없습니다.</div>
   </main>
 
-  <!-- Cart Drawer -->
-  <aside class="drawer" id="cartDrawer" aria-hidden="true">
-    <header>
-      <h3 style="padding-left:18px">장바구니</h3>
-    </header>
-    <div class="body" id="cartBody"></div>
-    <div class="foot">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px">
-        <strong>합계</strong>
-        <strong id="cartTotal">₩0</strong>
-      </div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap">
-        <button class="btn ghost" id="clearCart">비우기</button>
-        <button class="btn primary" id="checkout">주문 생성(결제 없음)</button>
-      </div>
-    </div>
-  </aside>
+  <footer class="container">© <span id="year"></span> 득템생활연구소</footer>
 
-  <footer>
-    <div class="container footbar">
-      <small>© <span id="year"></span> 득템생활연구소 · 데모 쇼핑몰</small>
-      <div style="display:flex; gap:10px">
-        <a href="#products">제품</a>
-        <a href="#orders">주문내역</a>
-      </div>
-    </div>
-  </footer>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
   <script>
-    // ---------- 간단 유틸 ----------
-    const fmt = n => '₩' + n.toLocaleString('ko-KR');
-    const byId = id => document.getElementById(id);
-    const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
-    const load = (k, d=[]) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } };
+    document.getElementById('year').textContent = new Date().getFullYear();
+    const fmt = n => '₩' + Number(n||0).toLocaleString('ko-KR');
 
-    // ---------- 샘플 상품 데이터 ----------
-    const PRODUCTS = [
-      {id:'S001', name:'트레일 러닝화', price:129000, category:'신발', specs:'방수/경량/접지 강화'},
-      {id:'A101', name:'시그니처 후디', price:59000, category:'의류', specs:'코튼블렌드/오버핏'},
-      {id:'E301', name:'미니 블루투스 스피커', price:39000, category:'전자', specs:'Type‑C/10h 플레이'},
-      {id:'L201', name:'프리미엄 행주 5P', price:9900, category:'리빙', specs:'초극세사/빠른건조'},
-      {id:'O401', name:'UPF50+ 선캡', price:19800, category:'스포츠', specs:'통풍 메쉬/생활방수'},
-      {id:'A111', name:'노라인 이너웨어', price:12900, category:'의류', specs:'심리스/소프트터치'},
-    ];
+    // 🔑 본인 firebaseConfig 값으로 교체하세요
+    const firebaseConfig = {
+      apiKey: "AIzaSyA3ZFVJIU7t01qhoXM6DLo-XK_30OdN9YE",
+      authDomain: "payteacher-9da3a.firebaseapp.com",
+      projectId: "payteacher-9da3a",
+    };
 
-    // ---------- 상태 ----------
-    let cart = load('cart'); // [{id,qty}]
-    let orders = load('orders'); // [{id, items:[{id,qty,price}], total, createdAt}]
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    const syncBadges = () => {
-      const count = cart.reduce((s,i)=>s+i.qty,0);
-      byId('cartCount').textContent = count ? `(${count})` : '';
-      byId('year').textContent = new Date().getFullYear();
-    }
+    const grid = document.getElementById('grid');
+    const empty = document.getElementById('empty');
 
-    // ---------- 제품 렌더 ----------
-    const grid = byId('productGrid');
-    const renderProducts = () => {
-      grid.innerHTML = PRODUCTS.map(p=>`
-        <article class="card" data-id="${p.id}">
-          <div class="thumb"><span>IMG</span><div class="pill">${p.category}</div></div>
+    async function fetchProducts(){
+      const snap = await db.collection('products').orderBy('createdAt','desc').get();
+      const list = [];
+      snap.forEach(doc => list.push(doc.data()));
+
+      if(list.length === 0){ empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+
+      grid.innerHTML = list.map(p => `
+        <article class="card">
+          <div class="thumb">
+            ${p.imageUrl ? `<img src="${p.imageUrl}">` : '<span style="opacity:.12">IMG</span>'}
+          </div>
           <div class="content">
             <h3 class="title">${p.name}</h3>
             <div class="meta">${p.specs}</div>
             <div class="price">${fmt(p.price)}</div>
-            <div class="add">
-              <button class="btn primary" onclick="addToCart('${p.id}')">장바구니 담기</button>
-            </div>
           </div>
         </article>
       `).join('');
     }
-
-    // ---------- 장바구니 ----------
-    const drawer = byId('cartDrawer');
-    const openCart = () => { drawer.classList.add('open') }
-    const closeCart = () => { drawer.classList.remove('open') }
-
-    const addToCart = (id) => {
-      const item = cart.find(i=>i.id===id);
-      if(item) item.qty += 1; else cart.push({id, qty:1});
-      save('cart', cart); renderCart(); syncBadges(); openCart();
-    }
-    window.addToCart = addToCart; // for inline onclick
-
-    const changeQty = (id, delta) => {
-      const item = cart.find(i=>i.id===id);
-      if(!item) return;
-      item.qty += delta;
-      if(item.qty<=0) cart = cart.filter(i=>i.id!==id);
-      save('cart', cart); renderCart(); syncBadges();
-    }
-
-    const cartBody = byId('cartBody');
-    const cartTotalEl = byId('cartTotal');
-    const renderCart = () => {
-      if(cart.length===0){
-        cartBody.innerHTML = `<div class="empty">장바구니가 비었습니다.</div>`;
-        cartTotalEl.textContent = fmt(0);
-        return;
-      }
-      let total = 0;
-      cartBody.innerHTML = cart.map(ci=>{
-        const p = PRODUCTS.find(x=>x.id===ci.id);
-        const line = p.price * ci.qty; total+=line;
-        return `<div class="line">
-          <div>
-            <div style="font-weight:700">${p.name}</div>
-            <div style="color:var(--muted); font-size:13px">${fmt(p.price)} × ${ci.qty}</div>
-          </div>
-          <div class="qty">
-            <button onclick="changeQty('${ci.id}',-1)">-</button>
-            <span>${ci.qty}</span>
-            <button onclick="changeQty('${ci.id}',1)">+</button>
-          </div>
-        </div>`
-      }).join('');
-      cartTotalEl.textContent = fmt(total);
-    }
-
-    // ---------- 주문 생성 (결제 없음) ----------
-    const checkout = () => {
-      if(cart.length===0) return alert('장바구니가 비어있습니다.');
-      const items = cart.map(ci=>{ const p = PRODUCTS.find(x=>x.id===ci.id); return { id:p.id, name:p.name, price:p.price, qty:ci.qty } });
-      const total = items.reduce((s,i)=>s + i.price * i.qty, 0);
-      const order = { id: 'O' + Date.now(), items, total, createdAt: new Date().toISOString() };
-      orders.unshift(order); save('orders', orders);
-      cart = []; save('cart', cart); renderCart(); syncBadges();
-      alert('주문이 생성되었습니다. (결제 없이 데모용)
-주문내역 페이지에서 확인하세요.');
-      location.hash = '#orders';
-      renderOrders(); closeCart();
-    }
-
-    const renderOrders = () => {
-      const wrap = byId('ordersWrap');
-      if(orders.length===0){ wrap.innerHTML = `<div class="empty">주문 내역이 없습니다.</div>`; return; }
-      wrap.innerHTML = `
-        <table>
-          <thead>
-            <tr><th>주문번호</th><th>주문일시</th><th>상품 수</th><th>합계</th></tr>
-          </thead>
-          <tbody>
-            ${orders.map(o=>`<tr>
-              <td>${o.id}</td>
-              <td>${new Date(o.createdAt).toLocaleString('ko-KR')}</td>
-              <td>${o.items.reduce((s,i)=>s+i.qty,0)}</td>
-              <td>${fmt(o.total)}</td>
-            </tr>
-            <tr>
-              <td colspan="4" style="padding:0 0 16px 0">
-                <div style="padding:8px 0 0 10px; color:var(--muted); font-size:14px">
-                  ${o.items.map(i=>`${i.name} × ${i.qty} — ${fmt(i.price*i.qty)}`).join('<br/>')}
-                </div>
-              </td>
-            </tr>`).join('')}
-          </tbody>
-        </table>`;
-    }
-
-    // ---------- 이벤트 바인딩 ----------
-    byId('openCart').addEventListener('click', openCart);
-    byId('openCart2').addEventListener('click', openCart);
-    byId('clearCart').addEventListener('click', ()=>{ if(confirm('장바구니를 비울까요?')){ cart=[]; save('cart',cart); renderCart(); syncBadges(); } });
-    byId('checkout').addEventListener('click', checkout);
-    drawer.addEventListener('click', (e)=>{ if(e.target===drawer) closeCart() });
-
-    // ---------- 초기 렌더 ----------
-    renderProducts();
-    renderCart();
-    renderOrders();
-    syncBadges();
-
-    // 라우팅(해시로 이동 시 자동 스크롤)
-    if(location.hash==="#orders"){ document.querySelector('#orders').scrollIntoView({behavior:'smooth'}); }
+    fetchProducts();
   </script>
 </body>
 </html>

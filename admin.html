@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>득템생활연구소 · 관리자</title>
+  <meta name="description" content="Firebase Auth + Firestore로 상품 등록/수정/삭제" />
+  <style>
+    :root{ --bg:#0b0c10; --muted:#a8b0bf; --text:#e9edf5; --accent:#5be3b4; --danger:#ff7a7a; }
+    *{box-sizing:border-box}
+    html,body{margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans KR',sans-serif; color:var(--text); background:#0b0c10;}
+    a{color:inherit; text-decoration:none}
+    .container{max-width:1000px; margin:0 auto; padding:0 16px}
+    header{position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px); background:rgba(11,12,16,.7); border-bottom:1px solid rgba(255,255,255,.06)}
+    .nav{display:flex; align-items:center; justify-content:space-between; min-height:64px}
+    .brand{font-weight:700}
+    .row{display:grid; grid-template-columns:1fr; gap:16px; padding:18px 0}
+    @media (min-width:860px){ .row{grid-template-columns:1fr 1fr} }
+    input, textarea, select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#0c0f14; color:var(--text)}
+    textarea{min-height:84px; resize:vertical}
+    .btn{border:1px solid rgba(255,255,255,.18); padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer}
+    .btn.primary{background:linear-gradient(135deg,var(--accent),#7aa8ff); color:#0b0c10; border:0}
+    .btn.danger{background:#2a1212; border-color:#5a2222}
+    table{width:100%; border-collapse:collapse; margin:12px 0 28px}
+    th,td{padding:10px 8px; text-align:left; border-bottom:1px solid rgba(255,255,255,.08)}
+    th{font-size:14px; color:#cfe3ff; background:#0f131b; position:sticky; top:64px}
+    .muted{color:var(--muted)}
+    .login{max-width:420px; margin:40px auto; background:#0f131b; padding:18px; border-radius:12px; border:1px solid rgba(255,255,255,.08)}
+    .msg{margin:10px 0; color:#ffd27a}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">관리자 페이지</div>
+      <nav>
+        <a href="index.html" style="opacity:.7">← 스토어</a>
+        <button id="logout" class="btn">로그아웃</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="authSection" class="login" style="display:none">
+      <h3>관리자 로그인</h3>
+      <input id="email" type="email" placeholder="이메일" />
+      <input id="password" type="password" placeholder="비밀번호" />
+      <div class="msg" id="authMsg"></div>
+      <div style="display:flex; gap:8px">
+        <button id="login" class="btn primary">로그인</button>
+        <button id="signup" class="btn">관리자 계정 생성</button>
+      </div>
+      <p class="muted">* Firebase Console에서 Email/Password 인증을 활성화해야 합니다.</p>
+    </section>
+    <!-- (1/3에서 이어짐) -->
+
+    <section id="appSection" style="display:none">
+      <h2>상품 등록/수정</h2>
+      <div class="row">
+        <div>
+          <label>상품명</label>
+          <input id="name" placeholder="예: 시그니처 후디" />
+        </div>
+        <div>
+          <label>가격</label>
+          <input id="price" type="number" min="0" step="100" placeholder="예: 59000" />
+        </div>
+        <div>
+          <label>카테고리</label>
+          <select id="category">
+            <option>신발</option>
+            <option>의류</option>
+            <option>전자</option>
+            <option>리빙</option>
+            <option>스포츠</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label>설명/스펙</label>
+          <textarea id="specs" placeholder="예: 코튼블렌드 / 오버핏"></textarea>
+        </div>
+        <div style="grid-column:1/-1">
+          <label>이미지 URL (선택)</label>
+          <input id="imageUrl" placeholder="https://example.com/image.jpg" />
+        </div>
+        <div style="display:flex; gap:8px; grid-column:1/-1">
+          <button id="save" class="btn primary">저장</button>
+          <button id="reset" class="btn">초기화</button>
+          <div class="msg" id="saveMsg"></div>
+        </div>
+      </div>
+
+      <h2>상품 리스트</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>상품명</th>
+            <th>카테고리</th>
+            <th>가격</th>
+            <th>등록일</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="list">
+          <!-- 스크립트(3/3)에서 Firestore 데이터로 채워집니다 -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+  <script>
+    // 🔑 여기를 Firebase Console에서 발급받은 값으로 교체하세요
+    const firebaseConfig = {
+  apiKey: "AIzaSyA3ZFVJIU7t01qhoXM6DLo-XK_30OdN9YE",
+  authDomain: "payteacher-9da3a.firebaseapp.com",
+  projectId: "payteacher-9da3a",
+  storageBucket: "payteacher-9da3a.firebasestorage.app",
+  messagingSenderId: "1048224861169",
+  appId: "1:1048224861169:web:d6ce67ea15bb7ce7f0d250",
+  
+    };
+
+    // Firebase 초기화
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // UI 요소들
+    const authSection = document.getElementById('authSection');
+    const appSection  = document.getElementById('appSection');
+    const emailEl = document.getElementById('email');
+    const pwEl = document.getElementById('password');
+    const authMsg = document.getElementById('authMsg');
+    const loginBtn = document.getElementById('login');
+    const signupBtn = document.getElementById('signup');
+    const logoutBtn = document.getElementById('logout');
+
+    const nameEl = document.getElementById('name');
+    const priceEl = document.getElementById('price');
+    const catEl = document.getElementById('category');
+    const specsEl = document.getElementById('specs');
+    const imageUrlEl = document.getElementById('imageUrl');
+    const saveBtn = document.getElementById('save');
+    const resetBtn = document.getElementById('reset');
+    const saveMsg = document.getElementById('saveMsg');
+    const listEl = document.getElementById('list');
+
+    let editingId = null;
+
+    // 인증 상태 변경 처리
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        authSection.style.display = 'none';
+        appSection.style.display = 'block';
+        loadProducts();
+      } else {
+        authSection.style.display = 'block';
+        appSection.style.display = 'none';
+      }
+    });
+
+    // 로그인
+    loginBtn.onclick = async () => {
+      authMsg.textContent = '';
+      try {
+        await auth.signInWithEmailAndPassword(emailEl.value, pwEl.value);
+      } catch (e) {
+        authMsg.textContent = e.message;
+      }
+    };
+
+    // 회원가입 (처음 관리자 계정 만들 때만 사용)
+    signupBtn.onclick = async () => {
+      authMsg.textContent = '';
+      try {
+        await auth.createUserWithEmailAndPassword(emailEl.value, pwEl.value);
+        authMsg.textContent = '관리자 계정이 생성되었습니다.';
+      } catch (e) {
+        authMsg.textContent = e.message;
+      }
+    };
+
+    // 로그아웃
+    logoutBtn.onclick = () => auth.signOut();
+
+    // 저장 (신규/수정)
+    saveBtn.onclick = async () => {
+      saveMsg.textContent = '';
+      const data = {
+        name: nameEl.value.trim(),
+        price: Number(priceEl.value || 0),
+        category: catEl.value,
+        specs: specsEl.value.trim(),
+        imageUrl: imageUrlEl.value.trim(),
+        updatedAt: new Date(),
+      };
+      if (!data.name) { saveMsg.textContent = '상품명을 입력하세요.'; return; }
+
+      try {
+        if (editingId) {
+          await db.collection('products').doc(editingId).update(data);
+          saveMsg.textContent = '상품이 수정되었습니다.';
+        } else {
+          await db.collection('products').add({ ...data, createdAt: new Date() });
+          saveMsg.textContent = '상품이 등록되었습니다.';
+        }
+        clearForm();
+        loadProducts();
+      } catch (e) {
+        saveMsg.textContent = e.message;
+      }
+    };
+
+    resetBtn.onclick = () => clearForm();
+
+    const clearForm = () => {
+      editingId = null;
+      nameEl.value = '';
+      priceEl.value = '';
+      catEl.value = '신발';
+      specsEl.value = '';
+      imageUrlEl.value = '';
+      saveBtn.textContent = '저장';
+    };
+
+    // 상품 불러오기
+    const loadProducts = async () => {
+      listEl.innerHTML = '';
+      const snap = await db.collection('products').orderBy('createdAt', 'desc').get();
+      if (snap.empty) {
+        listEl.innerHTML = '<tr><td colspan="5" class="muted">등록된 상품이 없습니다.</td></tr>';
+        return;
+      }
+      snap.forEach(doc => {
+        const p = { id: doc.id, ...doc.data() };
+        const tr = document.createElement('tr');
+        const createdAt = p.createdAt?.toDate ? p.createdAt.toDate() : new Date();
+        tr.innerHTML = `
+          <td>${p.name}</td>
+          <td>${p.category}</td>
+          <td>${Number(p.price).toLocaleString('ko-KR')}</td>
+          <td>${createdAt.toLocaleString('ko-KR')}</td>
+          <td>
+            <button class="btn" data-edit="${p.id}">수정</button>
+            <button class="btn danger" data-del="${p.id}">삭제</button>
+          </td>
+        `;
+        listEl.appendChild(tr);
+
+        tr.querySelector('[data-edit]').onclick = () => {
+          editingId = p.id;
+          nameEl.value = p.name || '';
+          priceEl.value = p.price || 0;
+          catEl.value = p.category || '신발';
+          specsEl.value = p.specs || '';
+          imageUrlEl.value = p.imageUrl || '';
+          saveBtn.textContent = '수정 저장';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        tr.querySelector('[data-del]').onclick = async () => {
+          if (!confirm('삭제하시겠습니까?')) return;
+          await db.collection('products').doc(p.id).delete();
+          loadProducts();
+        };
+      });
+    };
+  </script>
+</body>
+</html>
+
+
