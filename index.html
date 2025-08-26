@@ -112,10 +112,7 @@
       apiKey: "AIzaSyA3ZFVJIU7t01qhoXM6DLo-XK_30OdN9YE",
       authDomain: "payteacher-9da3a.firebaseapp.com",
       projectId: "payteacher-9da3a",
-      storageBucket: "payteacher-9da3a.firebasestorage.app",
-      messagingSenderId: "1048224861169",
-      appId: "1:1048224861169:web:d6ce67ea15bb7ce7f0d250",
-      measurementId: "G-PJDZZXDHEY"
+      
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -271,9 +268,15 @@
     }
 
     // ---- 초기
-    document.getElementById('cartCount').textContent=cart.reduce((s,i)=>s+i.qty,0);
-    await loadStoreConfig();
-    fetchProducts();
-  </script>
+   <script>
+// ...
+document.getElementById('cartCount').textContent = cart.reduce((s,i)=>s+i.qty,0);
+
+(async () => {
+  await loadStoreConfig();
+  fetchProducts();
+})();
+</script>
+
 </body>
 </html>
