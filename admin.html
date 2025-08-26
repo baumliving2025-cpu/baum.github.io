@@ -3,58 +3,62 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>득템생활연구소 · 관리자</title>
-  <meta name="description" content="Firebase Auth + Firestore로 상품 등록/수정/삭제" />
+  <title>관리자 · 득템생활연구소</title>
+  <meta name="description" content="Firebase Auth + Firestore 관리자: 상품/주문/스토어 설정" />
   <style>
-    :root{ --bg:#0b0c10; --muted:#a8b0bf; --text:#e9edf5; --accent:#5be3b4; --danger:#ff7a7a; }
+    :root{ --bg:#0b0c10; --muted:#a8b0bf; --text:#e9edf5; --accent:#5be3b4; --danger:#ff7a7a; --border:rgba(255,255,255,.08) }
     *{box-sizing:border-box}
     html,body{margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans KR',sans-serif; color:var(--text); background:#0b0c10;}
     a{color:inherit; text-decoration:none}
-    .container{max-width:1000px; margin:0 auto; padding:0 16px}
-    header{position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px); background:rgba(11,12,16,.7); border-bottom:1px solid rgba(255,255,255,.06)}
+    .container{max-width:1100px; margin:0 auto; padding:0 16px}
+    header{position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px); background:rgba(11,12,16,.7); border-bottom:1px solid var(--border)}
     .nav{display:flex; align-items:center; justify-content:space-between; min-height:64px}
-    .brand{font-weight:700}
+    .brand{font-weight:800}
     .row{display:grid; grid-template-columns:1fr; gap:16px; padding:18px 0}
     @media (min-width:860px){ .row{grid-template-columns:1fr 1fr} }
-    input, textarea, select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:#0c0f14; color:var(--text)}
+    input, textarea, select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0c0f14; color:var(--text)}
     textarea{min-height:84px; resize:vertical}
-    .btn{border:1px solid rgba(255,255,255,.18); padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer}
+    .btn{border:1px solid rgba(255,255,255,.18); padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer; color:var(--text); background:#151922}
     .btn.primary{background:linear-gradient(135deg,var(--accent),#7aa8ff); color:#0b0c10; border:0}
     .btn.danger{background:#2a1212; border-color:#5a2222}
-    table{width:100%; border-collapse:collapse; margin:12px 0 28px}
-    th,td{padding:10px 8px; text-align:left; border-bottom:1px solid rgba(255,255,255,.08)}
+    .btn.link{background:transparent; border:0; color:#8ab6ff}
+    table{width:100%; border-collapse:collapse; margin:12px 0 28px; background:#0f131b; border:1px solid var(--border); border-radius:12px; overflow:hidden}
+    th,td{padding:10px 8px; text-align:left; border-bottom:1px solid var(--border)}
     th{font-size:14px; color:#cfe3ff; background:#0f131b; position:sticky; top:64px}
     .muted{color:var(--muted)}
-    .login{max-width:420px; margin:40px auto; background:#0f131b; padding:18px; border-radius:12px; border:1px solid rgba(255,255,255,.08)}
+    .login{max-width:420px; margin:40px auto; background:#0f131b; padding:18px; border-radius:12px; border:1px solid var(--border)}
     .msg{margin:10px 0; color:#ffd27a}
+    h2{margin-top:26px}
   </style>
 </head>
 <body>
   <header>
     <div class="container nav">
       <div class="brand">관리자 페이지</div>
-      <nav>
-        <a href="index.html" style="opacity:.7">← 스토어</a>
+      <nav style="display:flex; gap:8px; align-items:center">
+        <a href="index.html" class="btn link">← 스토어</a>
         <button id="logout" class="btn">로그아웃</button>
       </nav>
     </div>
   </header>
 
   <main class="container">
+    <!-- 로그인 섹션 -->
     <section id="authSection" class="login" style="display:none">
       <h3>관리자 로그인</h3>
       <input id="email" type="email" placeholder="이메일" />
-      <input id="password" type="password" placeholder="비밀번호" />
+      <input id="password" type="password" placeholder="비밀번호(6자 이상)" />
       <div class="msg" id="authMsg"></div>
       <div style="display:flex; gap:8px">
         <button id="login" class="btn primary">로그인</button>
         <button id="signup" class="btn">관리자 계정 생성</button>
       </div>
-      <p class="muted">* Firebase Console에서 Email/Password 인증을 활성화해야 합니다.</p>
+      <p class="muted">* Firebase Console → Authentication → Email/Password 활성화 필요</p>
     </section>
-    <!-- (1/3에서 이어짐) -->
 
+    <!-- 앱 섹션 -->
     <section id="appSection" style="display:none">
+      <!-- 상품 등록/수정 -->
       <h2>상품 등록/수정</h2>
       <div class="row">
         <div>
@@ -68,11 +72,7 @@
         <div>
           <label>카테고리</label>
           <select id="category">
-            <option>신발</option>
-            <option>의류</option>
-            <option>전자</option>
-            <option>리빙</option>
-            <option>스포츠</option>
+            <option>신발</option><option>의류</option><option>전자</option><option>리빙</option><option>스포츠</option>
           </select>
         </div>
         <div style="grid-column:1/-1">
@@ -90,46 +90,65 @@
         </div>
       </div>
 
+      <!-- 상품 리스트 -->
       <h2>상품 리스트</h2>
       <table>
-        <thead>
-          <tr>
-            <th>상품명</th>
-            <th>카테고리</th>
-            <th>가격</th>
-            <th>등록일</th>
-            <th>관리</th>
-          </tr>
-        </thead>
-        <tbody id="list">
-          <!-- 스크립트(3/3)에서 Firestore 데이터로 채워집니다 -->
-        </tbody>
+        <thead><tr><th>상품명</th><th>카테고리</th><th>가격</th><th>등록일</th><th>관리</th></tr></thead>
+        <tbody id="list"></tbody>
       </table>
+
+      <!-- 주문 관리 -->
+      <h2 style="margin-top:36px">주문 관리</h2>
+      <div style="display:flex; gap:10px; align-items:center; margin:8px 0 12px">
+        <button id="refreshOrders" class="btn">새로고침</button>
+        <span class="muted">* Firestore orders 컬렉션을 최신순으로 불러옵니다.</span>
+      </div>
+      <div id="ordersWrap">
+        <div class="muted">주문을 불러오는 중이거나 아직 없습니다.</div>
+      </div>
+
+      <!-- 스토어 설정 -->
+      <h2 style="margin-top:36px">스토어 설정</h2>
+      <p class="muted">상호(쇼핑몰 이름)과 하단 사업자정보를 입력하세요. 고객 화면(index.html)에 자동 반영됩니다.</p>
+      <div class="row">
+        <div style="grid-column:1/-1">
+          <label>쇼핑몰 이름(상호)</label>
+          <input id="cfgStoreName" placeholder="예: 득템생활연구소 스토어" />
+        </div>
+        <div style="grid-column:1/-1">
+          <label>사업자정보(여러 줄 가능)</label>
+          <textarea id="cfgBizInfo" placeholder="예: 상호 / 대표자 / 사업자등록번호 / 통신판매번호 / 주소 / 고객센터 등"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;grid-column:1/-1">
+          <button id="saveConfig" class="btn primary">설정 저장</button>
+          <button id="reloadConfig" class="btn">불러오기</button>
+          <div class="msg" id="cfgMsg"></div>
+        </div>
+      </div>
     </section>
   </main>
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
   <script>
-    // 🔑 여기를 Firebase Console에서 발급받은 값으로 교체하세요
+    // === Firebase 설정 (당신 값) ===
     const firebaseConfig = {
-  apiKey: "AIzaSyA3ZFVJIU7t01qhoXM6DLo-XK_30OdN9YE",
-  authDomain: "payteacher-9da3a.firebaseapp.com",
-  projectId: "payteacher-9da3a",
-  storageBucket: "payteacher-9da3a.firebasestorage.app",
-  messagingSenderId: "1048224861169",
-  appId: "1:1048224861169:web:d6ce67ea15bb7ce7f0d250",
-  
+      apiKey: "AIzaSyA3ZFVJIU7t01qhoXM6DLo-XK_30OdN9YE",
+      authDomain: "payteacher-9da3a.firebaseapp.com",
+      projectId: "payteacher-9da3a",
+      storageBucket: "payteacher-9da3a.firebasestorage.app",
+      messagingSenderId: "1048224861169",
+      appId: "1:1048224861169:web:d6ce67ea15bb7ce7f0d250",
+      measurementId: "G-PJDZZXDHEY"
     };
-
-    // Firebase 초기화
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // UI 요소들
+    // === 엘리먼트 ===
     const authSection = document.getElementById('authSection');
     const appSection  = document.getElementById('appSection');
     const emailEl = document.getElementById('email');
@@ -149,45 +168,66 @@
     const saveMsg = document.getElementById('saveMsg');
     const listEl = document.getElementById('list');
 
+    const cfgStoreName = document.getElementById('cfgStoreName');
+    const cfgBizInfo = document.getElementById('cfgBizInfo');
+    const cfgMsg = document.getElementById('cfgMsg');
+    const saveConfigBtn = document.getElementById('saveConfig');
+    const reloadConfigBtn = document.getElementById('reloadConfig');
+
+    const ordersWrap = document.getElementById('ordersWrap');
+    const refreshOrdersBtn = document.getElementById('refreshOrders');
+
     let editingId = null;
 
-    // 인증 상태 변경 처리
+    // === 유틸 ===
+    const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    const fmt = (n) => '₩' + Number(n || 0).toLocaleString('ko-KR');
+    const dkey = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth()+1).padStart(2,'0');
+      const d = String(date.getDate()).padStart(2,'0');
+      return `${y}-${m}-${d}`;
+    };
+
+    // === 인증 상태 ===
     auth.onAuthStateChanged(user => {
       if (user) {
         authSection.style.display = 'none';
         appSection.style.display = 'block';
         loadProducts();
+        loadOrders();
+        loadStoreConfigAdmin();
       } else {
         authSection.style.display = 'block';
         appSection.style.display = 'none';
       }
     });
 
-    // 로그인
+    // === 로그인/회원가입/로그아웃 ===
     loginBtn.onclick = async () => {
       authMsg.textContent = '';
+      const email = emailEl.value.trim();
+      const pw = pwEl.value.trim();
+      if (!isEmail(email)) { authMsg.textContent = '올바른 이메일 형식이 아닙니다.'; return; }
+      if (pw.length < 6) { authMsg.textContent = '비밀번호는 6자 이상이어야 합니다.'; return; }
       try {
-        await auth.signInWithEmailAndPassword(emailEl.value, pwEl.value);
-      } catch (e) {
-        authMsg.textContent = e.message;
-      }
+        await auth.signInWithEmailAndPassword(email, pw);
+      } catch (e) { authMsg.textContent = e.message; }
     };
-
-    // 회원가입 (처음 관리자 계정 만들 때만 사용)
     signupBtn.onclick = async () => {
       authMsg.textContent = '';
+      const email = emailEl.value.trim();
+      const pw = pwEl.value.trim();
+      if (!isEmail(email)) { authMsg.textContent = '올바른 이메일 형식이 아닙니다.'; return; }
+      if (pw.length < 6) { authMsg.textContent = '비밀번호는 6자 이상이어야 합니다.'; return; }
       try {
-        await auth.createUserWithEmailAndPassword(emailEl.value, pwEl.value);
+        await auth.createUserWithEmailAndPassword(email, pw);
         authMsg.textContent = '관리자 계정이 생성되었습니다.';
-      } catch (e) {
-        authMsg.textContent = e.message;
-      }
+      } catch (e) { authMsg.textContent = e.message; }
     };
-
-    // 로그아웃
     logoutBtn.onclick = () => auth.signOut();
 
-    // 저장 (신규/수정)
+    // === 상품 저장/업데이트 ===
     saveBtn.onclick = async () => {
       saveMsg.textContent = '';
       const data = {
@@ -199,8 +239,7 @@
         updatedAt: new Date(),
       };
       if (!data.name) { saveMsg.textContent = '상품명을 입력하세요.'; return; }
-
-      try {
+      try{
         if (editingId) {
           await db.collection('products').doc(editingId).update(data);
           saveMsg.textContent = '상품이 수정되었습니다.';
@@ -208,47 +247,36 @@
           await db.collection('products').add({ ...data, createdAt: new Date() });
           saveMsg.textContent = '상품이 등록되었습니다.';
         }
-        clearForm();
-        loadProducts();
-      } catch (e) {
-        saveMsg.textContent = e.message;
-      }
+        clearForm(); loadProducts();
+      }catch(e){ saveMsg.textContent = e.message; }
     };
-
     resetBtn.onclick = () => clearForm();
 
-    const clearForm = () => {
+    function clearForm(){
       editingId = null;
-      nameEl.value = '';
-      priceEl.value = '';
-      catEl.value = '신발';
-      specsEl.value = '';
-      imageUrlEl.value = '';
+      nameEl.value = ''; priceEl.value=''; catEl.value='신발'; specsEl.value=''; imageUrlEl.value='';
       saveBtn.textContent = '저장';
-    };
+    }
 
-    // 상품 불러오기
-    const loadProducts = async () => {
+    // === 상품 목록 ===
+    async function loadProducts(){
       listEl.innerHTML = '';
-      const snap = await db.collection('products').orderBy('createdAt', 'desc').get();
-      if (snap.empty) {
-        listEl.innerHTML = '<tr><td colspan="5" class="muted">등록된 상품이 없습니다.</td></tr>';
-        return;
-      }
+      const snap = await db.collection('products').orderBy('createdAt','desc').get();
+      if (snap.empty){ listEl.innerHTML = '<tr><td colspan="5" class="muted">등록된 상품이 없습니다.</td></tr>'; return; }
       snap.forEach(doc => {
-        const p = { id: doc.id, ...doc.data() };
+        const p = {id: doc.id, ...doc.data()};
         const tr = document.createElement('tr');
-        const createdAt = p.createdAt?.toDate ? p.createdAt.toDate() : new Date();
+        const createdAt = p.createdAt?.toDate ? p.createdAt.toDate() :
+                          (p.createdAt?.seconds ? new Date(p.createdAt.seconds*1000) : new Date());
         tr.innerHTML = `
-          <td>${p.name}</td>
-          <td>${p.category}</td>
-          <td>${Number(p.price).toLocaleString('ko-KR')}</td>
+          <td>${p.name||''}</td>
+          <td>${p.category||''}</td>
+          <td>${Number(p.price||0).toLocaleString('ko-KR')}</td>
           <td>${createdAt.toLocaleString('ko-KR')}</td>
           <td>
             <button class="btn" data-edit="${p.id}">수정</button>
             <button class="btn danger" data-del="${p.id}">삭제</button>
-          </td>
-        `;
+          </td>`;
         listEl.appendChild(tr);
 
         tr.querySelector('[data-edit]').onclick = () => {
@@ -259,18 +287,118 @@
           specsEl.value = p.specs || '';
           imageUrlEl.value = p.imageUrl || '';
           saveBtn.textContent = '수정 저장';
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          window.scrollTo({top:0, behavior:'smooth'});
         };
-
         tr.querySelector('[data-del]').onclick = async () => {
           if (!confirm('삭제하시겠습니까?')) return;
           await db.collection('products').doc(p.id).delete();
           loadProducts();
         };
       });
-    };
+    }
+
+    // === 주문 관리 ===
+    async function loadOrders(){
+      ordersWrap.innerHTML = '<div class="muted">불러오는 중...</div>';
+      try{
+        const snap = await db.collection('orders')
+          .orderBy('createdAt', 'desc')
+          .limit(200)
+          .get();
+
+        if (snap.empty){ ordersWrap.innerHTML = '<div class="muted">주문이 없습니다.</div>'; return; }
+
+        // 날짜별 그룹
+        const groups = {};
+        snap.forEach(doc => {
+          const o = doc.data();
+          let dt;
+          if (o.createdAt?.toDate) dt = o.createdAt.toDate();
+          else if (typeof o.createdAt === 'string') dt = new Date(o.createdAt);
+          else dt = new Date();
+          const key = dkey(dt);
+          const safe = {
+            id: o.id || doc.id,
+            createdAt: dt,
+            items: Array.isArray(o.items) ? o.items : [],
+            total: Number(o.total || 0)
+          };
+          (groups[key] ||= []).push(safe);
+        });
+
+        const days = Object.keys(groups).sort((a,b)=> b.localeCompare(a));
+        let html = '';
+        for (const day of days){
+          const list = groups[day];
+          html += `
+            <h3 style="margin:18px 0 8px">${day}</h3>
+            <table>
+              <thead>
+                <tr><th style="width:180px">주문번호</th><th>시간</th><th>품목 수</th><th>합계</th><th>자세히</th></tr>
+              </thead>
+              <tbody>
+                ${list.map(o=>{
+                  const count = o.items.reduce((s,i)=> s + Number(i.qty||0), 0);
+                  const timeStr = o.createdAt.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+                  const detailId = `detail_${o.id}`;
+                  return `
+                    <tr>
+                      <td>${o.id}</td>
+                      <td>${timeStr}</td>
+                      <td>${count}</td>
+                      <td>${fmt(o.total)}</td>
+                      <td><button class="btn" onclick="
+                        const row = document.getElementById('${detailId}');
+                        row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+                      ">펼치기</button></td>
+                    </tr>
+                    <tr id="${detailId}" style="display:none">
+                      <td colspan="5" style="font-size:13px; color:var(--muted)">
+                        ${o.items.map(i=> `${(i.name||'(이름없음)')} × ${i.qty} — ${fmt(Number(i.price||0)*Number(i.qty||0))}`).join('<br/>')}
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          `;
+        }
+        ordersWrap.innerHTML = html;
+      }catch(e){
+        console.error(e);
+        ordersWrap.innerHTML = `<div class="muted">주문 로드 오류: ${e.message}</div>`;
+      }
+    }
+    refreshOrdersBtn.onclick = loadOrders;
+
+    // === 스토어 설정 (상호/사업자정보) ===
+    async function loadStoreConfigAdmin(){
+      cfgMsg.textContent = '';
+      try{
+        const doc = await db.collection('config').doc('store').get();
+        const data = doc.exists ? doc.data() : {};
+        cfgStoreName.value = data.storeName || '';
+        cfgBizInfo.value = data.businessInfo || '';
+        if(!doc.exists){ cfgMsg.textContent = '처음 설정을 저장해 주세요.'; }
+      }catch(e){
+        cfgMsg.textContent = e.message;
+      }
+    }
+    async function saveStoreConfigAdmin(){
+      cfgMsg.textContent = '';
+      try{
+        await db.collection('config').doc('store').set({
+          storeName: cfgStoreName.value.trim(),
+          businessInfo: cfgBizInfo.value.trim(),
+          updatedAt: new Date()
+        }, { merge:true });
+        cfgMsg.textContent = '저장되었습니다.';
+      }catch(e){
+        cfgMsg.textContent = e.message;
+      }
+    }
+    saveConfigBtn.onclick = saveStoreConfigAdmin;
+    reloadConfigBtn.onclick = loadStoreConfigAdmin;
   </script>
 </body>
 </html>
-
-

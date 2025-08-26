@@ -3,88 +3,276 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>득템생활연구소 · 스토어</title>
-  <meta name="description" content="Firebase 연동: Firestore에서 상품을 불러오는 정적 스토어" />
+  <title>스토어</title>
+  <meta name="description" content="Firestore 상품/주문 + 설정(상호/사업자정보) 반영" />
   <style>
-    :root{ --bg:#0b0c10; --muted:#a8b0bf; --text:#e9edf5; --accent:#5be3b4; --accent-2:#7aa8ff; }
-    *{box-sizing:border-box} html,body{margin:0; padding:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans KR', sans-serif; color:var(--text); background:#0b0c10;}
-    a{color:inherit; text-decoration:none}
-    .container{max-width:1120px; margin:0 auto; padding:0 16px}
-    header{position:sticky; top:0; z-index:10; backdrop-filter:saturate(140%) blur(8px); background:rgba(11,12,16,.7); border-bottom:1px solid rgba(255,255,255,.06)}
-    .nav{display:flex; align-items:center; justify-content:space-between; min-height:64px}
-    .brand{font-weight:700}
-    .grid{display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:16px; padding:24px 0}
-    @media (min-width:580px){ .grid{grid-template-columns:repeat(2,1fr)} }
-    @media (min-width:920px){ .grid{grid-template-columns:repeat(3,1fr)} }
-    .card{background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden}
-    .thumb{aspect-ratio:16/11; background:#12141a; display:grid; place-items:center}
-    .thumb img{width:100%; height:100%; object-fit:cover}
+    :root{
+      --bg:#f8fafc; --text:#0f172a; --muted:#64748b;
+      --card:#ffffff; --border:#e2e8f0;
+      --accent:#2563eb; --accent-2:#22c55e; --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans KR',sans-serif;color:var(--text);background:var(--bg)}
+    a{color:inherit;text-decoration:none}
+    .container{max-width:1120px;margin:0 auto;padding:0 16px}
+    header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.9);backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid var(--border)}
+    .nav{display:flex;align-items:center;justify-content:space-between;min-height:64px}
+    .brand{font-weight:800;font-size:18px}
+    .toolbar{display:flex;gap:10px;align-items:center}
+    .btn{border:1px solid var(--border);padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .btn.ghost{background:#fff;color:var(--text)}
+    .btn.link{background:transparent;border:0;color:var(--accent);font-weight:700;cursor:pointer}
+    .grid{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:16px;padding:24px 0}
+    @media (min-width:580px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media (min-width:920px){.grid{grid-template-columns:repeat(3,1fr)}}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+    .thumb{aspect-ratio:16/11;display:grid;place-items:center;background:#f1f5f9;position:relative}
+    .thumb img{width:100%;height:100%;object-fit:cover}
+    .pill{position:absolute;top:10px;left:10px;background:#0f172a10;border:1px solid var(--border);padding:6px 10px;border-radius:999px;font-size:12px}
     .content{padding:12px 14px 16px}
-    .title{font-weight:800; margin:0 0 6px}
-    .meta{color:var(--muted); font-size:14px}
-    .price{margin-top:8px; font-weight:900}
-    .empty{color:var(--muted); padding:24px; text-align:center}
+    .title{font-weight:800;margin:0 0 6px}
+    .price{font-weight:900;margin-top:6px}
+    .section{padding:40px 0}
+    .empty{color:var(--muted);padding:24px;text-align:center}
+    table{width:100%;border-collapse:collapse;margin-top:20px;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left}
+    th{color:#0f172a;background:#f1f5f9}
+    footer{border-top:1px solid var(--border);background:#fff;color:var(--muted)}
+    .footbar{display:flex;flex-direction:column;gap:8px;padding:18px 0}
+    /* Drawers */
+    .drawer{position:fixed;top:0;right:-420px;width:min(420px,100vw);height:100vh;background:#fff;border-left:1px solid var(--border);transition:right .3s;z-index:50;display:flex;flex-direction:column}
+    .drawer.open{right:0}
+    .drawer header{padding:16px;border-bottom:1px solid var(--border);font-weight:800}
+    .drawer .body{flex:1;overflow:auto;padding:0 16px}
+    .drawer .foot{padding:16px;border-top:1px solid var(--border)}
   </style>
 </head>
 <body>
   <header>
     <div class="container nav">
-      <div class="brand">득템생활연구소 스토어</div>
-      <nav>
-        <a href="admin.html" style="opacity:.7">관리자</a>
+      <div class="brand" id="brandName">스토어</div>
+      <nav class="toolbar">
+        <button class="btn ghost" onclick="openMyPage()">마이페이지</button>
+        <button class="btn primary" onclick="openCart()">장바구니(<span id="cartCount">0</span>)</button>
       </nav>
     </div>
   </header>
 
   <main class="container">
-    <div id="grid" class="grid"></div>
-    <div id="empty" class="empty" style="display:none">등록된 상품이 없습니다.</div>
+    <section class="section">
+      <h2>상품 목록</h2>
+      <div id="grid" class="grid"></div>
+      <div id="empty" class="empty" style="display:none">등록된 상품이 없습니다.</div>
+    </section>
   </main>
 
-  <footer class="container">© <span id="year"></span> 득템생활연구소</footer>
+  <!-- 장바구니 -->
+  <aside class="drawer" id="cartDrawer" aria-hidden="true">
+    <header>장바구니</header>
+    <div class="body" id="cartBody"></div>
+    <div class="foot">
+      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+        <strong>합계</strong><strong id="cartTotal">₩0</strong>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn ghost" onclick="clearCart()">비우기</button>
+        <button class="btn primary" onclick="checkout()">주문 생성</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 마이페이지(주문내역) -->
+  <aside class="drawer" id="mypageDrawer" aria-hidden="true">
+    <header>마이페이지 · 주문 내역</header>
+    <div class="body" id="ordersWrap" style="padding-top:8px"></div>
+    <div class="foot" style="display:flex;justify-content:flex-end">
+      <button class="btn" onclick="closeMyPage()">닫기</button>
+    </div>
+  </aside>
+
+  <footer>
+    <div class="container footbar">
+      <small id="bizInfo">사업자정보가 아직 등록되지 않았습니다.</small>
+      <small>© <span id="year"></span></small>
+    </div>
+  </footer>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 
   <script>
+    // ---- 공통 util
     document.getElementById('year').textContent = new Date().getFullYear();
     const fmt = n => '₩' + Number(n||0).toLocaleString('ko-KR');
 
-    // 🔑 본인 firebaseConfig 값으로 교체하세요
+    // ---- Firebase 설정 (당신 값)
     const firebaseConfig = {
       apiKey: "AIzaSyA3ZFVJIU7t01qhoXM6DLo-XK_30OdN9YE",
       authDomain: "payteacher-9da3a.firebaseapp.com",
       projectId: "payteacher-9da3a",
+      storageBucket: "payteacher-9da3a.firebasestorage.app",
+      messagingSenderId: "1048224861169",
+      appId: "1:1048224861169:web:d6ce67ea15bb7ce7f0d250",
+      measurementId: "G-PJDZZXDHEY"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const grid = document.getElementById('grid');
-    const empty = document.getElementById('empty');
+    // ---- 상태
+    let PRODUCTS = [];
+    let cart = JSON.parse(localStorage.getItem('cart')||'[]');
+    let orders = JSON.parse(localStorage.getItem('orders')||'[]');
 
+    // ---- 설정(상호/사업자정보) 불러오기
+    async function loadStoreConfig(){
+      try{
+        const doc = await db.collection('config').doc('store').get();
+        const data = doc.exists ? doc.data() : {};
+        document.getElementById('brandName').textContent = data.storeName || '득템생활연구소 스토어';
+        document.getElementById('bizInfo').innerText = data.businessInfo || '사업자정보가 아직 등록되지 않았습니다.';
+        document.title = (data.storeName || '스토어');
+      }catch(e){ console.warn('config load error', e); }
+    }
+
+    // ---- 상품 불러오기
     async function fetchProducts(){
       const snap = await db.collection('products').orderBy('createdAt','desc').get();
-      const list = [];
-      snap.forEach(doc => list.push(doc.data()));
-
-      if(list.length === 0){ empty.style.display = 'block'; return; }
-      empty.style.display = 'none';
-
-      grid.innerHTML = list.map(p => `
+      PRODUCTS = [];
+      snap.forEach(doc => PRODUCTS.push({id:doc.id, ...doc.data()}));
+      renderProducts();
+    }
+    function renderProducts(){
+      const grid = document.getElementById('grid');
+      const empty = document.getElementById('empty');
+      if(PRODUCTS.length===0){ grid.innerHTML=''; empty.style.display='block'; return; }
+      empty.style.display='none';
+      grid.innerHTML = PRODUCTS.map(p=>`
         <article class="card">
           <div class="thumb">
-            ${p.imageUrl ? `<img src="${p.imageUrl}">` : '<span style="opacity:.12">IMG</span>'}
+            ${p.imageUrl?`<img src="${p.imageUrl}" alt="${p.name}">`:'<span style="opacity:.3">IMG</span>'}
+            <div class="pill">${p.category||''}</div>
           </div>
           <div class="content">
             <h3 class="title">${p.name}</h3>
-            <div class="meta">${p.specs}</div>
+            <div style="color:var(--muted)">${p.specs||''}</div>
             <div class="price">${fmt(p.price)}</div>
+            <button class="btn primary" onclick="addToCart('${p.id}')">장바구니 담기</button>
           </div>
         </article>
       `).join('');
     }
+
+    // ---- 장바구니
+    function openCart(){ document.getElementById('cartDrawer').classList.add('open'); renderCart(); }
+    function closeCart(){ document.getElementById('cartDrawer').classList.remove('open'); }
+    function addToCart(id){
+      const item = cart.find(i=>i.id===id);
+      if(item) item.qty++; else cart.push({id,qty:1});
+      localStorage.setItem('cart',JSON.stringify(cart));
+      renderCart();
+      document.getElementById('cartCount').textContent = cart.reduce((s,i)=>s+i.qty,0);
+      openCart();
+    }
+    function changeQty(id,delta){
+      const item = cart.find(i=>i.id===id);
+      if(!item) return;
+      item.qty+=delta;
+      if(item.qty<=0) cart=cart.filter(i=>i.id!==id);
+      localStorage.setItem('cart',JSON.stringify(cart));
+      renderCart();
+      document.getElementById('cartCount').textContent = cart.reduce((s,i)=>s+i.qty,0);
+    }
+    function clearCart(){ cart=[]; localStorage.setItem('cart','[]'); renderCart(); document.getElementById('cartCount').textContent=0; }
+    function renderCart(){
+      const body = document.getElementById('cartBody');
+      let total=0;
+      if(cart.length===0){ body.innerHTML='<div class="empty">장바구니가 비었습니다.</div>'; document.getElementById('cartTotal').textContent=fmt(0); return; }
+      body.innerHTML = cart.map(ci=>{
+        const p = PRODUCTS.find(x=>x.id===ci.id);
+        const line=p.price*ci.qty; total+=line;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding:8px 0">
+          <div>
+            <div style="font-weight:700">${p.name}</div>
+            <div style="color:var(--muted);font-size:13px">${fmt(p.price)} × ${ci.qty}</div>
+          </div>
+          <div>
+            <button class="btn" onclick="changeQty('${ci.id}',-1)">-</button>
+            <span>${ci.qty}</span>
+            <button class="btn" onclick="changeQty('${ci.id}',1)">+</button>
+          </div>
+        </div>`;
+      }).join('');
+      document.getElementById('cartTotal').textContent=fmt(total);
+    }
+
+    // ---- 주문 생성 → Firestore + localStorage
+    async function checkout(){
+      if(cart.length===0){ alert('장바구니가 비었습니다.'); return; }
+      const ts = new Date();
+      const orderId = 'O'
+        + ts.getFullYear()
+        + String(ts.getMonth()+1).padStart(2,'0')
+        + String(ts.getDate()).padStart(2,'0')
+        + String(ts.getHours()).padStart(2,'0')
+        + String(ts.getMinutes()).padStart(2,'0')
+        + String(ts.getSeconds()).padStart(2,'0');
+
+      const items = cart.map(ci=>{
+        const p=PRODUCTS.find(x=>x.id===ci.id);
+        return { productId:p.id, name:p.name, qty:ci.qty, price:p.price };
+      });
+      const total = items.reduce((s,i)=>s+i.price*i.qty,0);
+
+      try{
+        await db.collection('orders').add({
+          id: orderId, items, total,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }catch(e){
+        console.error('주문 저장 오류:', e);
+        alert('주문 저장 중 문제가 발생했습니다.');
+        return;
+      }
+
+      const localOrder = { id: orderId, items, total, createdAt: ts.toISOString() };
+      orders.unshift(localOrder);
+      localStorage.setItem('orders', JSON.stringify(orders));
+      cart=[]; localStorage.setItem('cart','[]');
+      document.getElementById('cartCount').textContent=0;
+      renderCart(); renderOrders(); closeCart();
+      openMyPage(); // 주문 후 마이페이지 열기
+      alert('주문이 생성되었습니다.');
+    }
+
+    // ---- 마이페이지(주문 내역)
+    function openMyPage(){ document.getElementById('mypageDrawer').classList.add('open'); renderOrders(); }
+    function closeMyPage(){ document.getElementById('mypageDrawer').classList.remove('open'); }
+    function renderOrders(){
+      const wrap=document.getElementById('ordersWrap');
+      if(orders.length===0){ wrap.innerHTML='<div class="empty">아직 주문이 없습니다.</div>'; return; }
+      wrap.innerHTML=`<table>
+        <thead><tr><th>주문번호</th><th>일시</th><th>상품수</th><th>합계</th></tr></thead>
+        <tbody>
+          ${orders.map(o=>`
+            <tr>
+              <td>${o.id}</td>
+              <td>${new Date(o.createdAt).toLocaleString('ko-KR')}</td>
+              <td>${o.items.reduce((s,i)=>s+i.qty,0)}</td>
+              <td>${fmt(o.total)}</td>
+            </tr>
+            <tr><td colspan="4" style="font-size:13px;color:var(--muted)">
+              ${o.items.map(i=>`${i.name} × ${i.qty} — ${fmt(i.price*i.qty)}`).join('<br/>')}
+            </td></tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+    }
+
+    // ---- 초기
+    document.getElementById('cartCount').textContent=cart.reduce((s,i)=>s+i.qty,0);
+    await loadStoreConfig();
     fetchProducts();
   </script>
 </body>
