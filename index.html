@@ -35,16 +35,33 @@
     .price{font-weight:900;margin-top:6px}
     .section{padding:40px 0}
     .empty{color:var(--muted);padding:24px;text-align:center}
-    table{width:100%;border-collapse:collapse;margin-top:20px;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden}
-    th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left}
-    th{color:#0f172a;background:#f1f5f9}
     footer{border-top:1px solid var(--border);background:#fff;color:var(--muted)}
     .footbar{display:flex;flex-direction:column;gap:8px;padding:18px 0}
+    /* Drawer */
     .drawer{position:fixed;top:0;right:-420px;width:min(420px,100vw);height:100vh;background:#fff;border-left:1px solid var(--border);transition:right .3s;z-index:50;display:flex;flex-direction:column}
     .drawer.open{right:0}
     .drawer header{padding:16px;border-bottom:1px solid var(--border);font-weight:800}
     .drawer .body{flex:1;overflow:auto;padding:0 16px}
     .drawer .foot{padding:16px;border-top:1px solid var(--border)}
+    /* MyPage Orders */
+    .order-group{margin:18px 0}
+    .order-date{font-weight:800; margin:12px 0 8px; color:#0f172a}
+    .order-card{background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:16px}
+    .order-head{display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border)}
+    .order-head .status{color:#64748b; font-weight:700}
+    .order-head .order-no{color:#334155; font-weight:800}
+    .order-body{padding:12px 16px}
+    .order-item{display:grid; grid-template-columns:72px 1fr; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border)}
+    .order-item:last-child{border-bottom:0}
+    .order-thumb{width:72px; height:72px; border-radius:10px; background:#f1f5f9; display:grid; place-items:center; overflow:hidden; border:1px solid var(--border)}
+    .order-thumb img{width:100%; height:100%; object-fit:cover}
+    .order-title{font-weight:800}
+    .order-sub{color:#64748b; font-size:13px}
+    .order-total{padding:12px 16px; background:#f8fafc; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:18px}
+    .order-actions{display:flex; gap:10px; padding:12px 16px; border-top:1px solid var(--border); background:#fff}
+    .order-actions .btn{padding:8px 12px; border-radius:10px}
+    .order-actions .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+    .order-actions .btn.ghost{background:#fff}
   </style>
 </head>
 <body>
@@ -204,7 +221,7 @@
       if(cart.length===0){ body.innerHTML='<div class="empty">장바구니가 비었습니다.</div>'; document.getElementById('cartTotal').textContent=fmt(0); return; }
       body.innerHTML = cart.map(ci=>{
         const p = PRODUCTS.find(x=>x.id===ci.id);
-        const line=p.price*ci.qty; total+=line;
+        const line=(p?.price||0)*ci.qty; total+=line;
         return `<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding:8px 0">
           <div>
             <div style="font-weight:700">${p?.name||'(삭제됨)'}</div>
@@ -220,7 +237,7 @@
       document.getElementById('cartTotal').textContent=fmt(total);
     }
 
-    // ---- 주문 생성 → Firestore + localStorage
+    // ---- 주문 생성 → Firestore + localStorage (이미지 포함)
     async function checkout(){
       if(cart.length===0){ alert('장바구니가 비었습니다.'); return; }
       const ts = new Date();
@@ -234,7 +251,13 @@
 
       const items = cart.map(ci=>{
         const p=PRODUCTS.find(x=>x.id===ci.id) || {};
-        return { productId:p.id||ci.id, name:p.name||'(삭제됨)', qty:ci.qty, price:p.price||0 };
+        return {
+          productId: p.id || ci.id,
+          name: p.name || '(삭제됨)',
+          qty: ci.qty,
+          price: p.price || 0,
+          imageUrl: p.imageUrl || ''
+        };
       });
       const total = items.reduce((s,i)=>s+i.price*i.qty,0);
 
@@ -259,31 +282,92 @@
       alert('주문이 생성되었습니다.');
     }
 
-    // ---- 마이페이지(주문 내역)
+    // ---- 마이페이지(주문 내역) — 카드형 UI
     function openMyPage(){ document.getElementById('mypageDrawer').classList.add('open'); renderOrders(); }
     function closeMyPage(){ document.getElementById('mypageDrawer').classList.remove('open'); }
-    function renderOrders(){
-      const wrap=document.getElementById('ordersWrap');
-      if(!orders || orders.length===0){ wrap.innerHTML='<div class="empty">아직 주문이 없습니다.</div>'; return; }
-      wrap.innerHTML=`<table>
-        <thead><tr><th>주문번호</th><th>일시</th><th>상품수</th><th>합계</th></tr></thead>
-        <tbody>
-          ${orders.map(o=>`
-            <tr>
-              <td>${o.id}</td>
-              <td>${new Date(o.createdAt).toLocaleString('ko-KR')}</td>
-              <td>${o.items.reduce((s,i)=>s+i.qty,0)}</td>
-              <td>${fmt(o.total)}</td>
-            </tr>
-            <tr><td colspan="4" style="font-size:13px;color:var(--muted)">
-              ${o.items.map(i=>`${i.name} × ${i.qty} — ${fmt(i.price*i.qty)}`).join('<br/>')}
-            </td></tr>
-          `).join('')}
-        </tbody>
-      </table>`;
+
+    // 날짜 라벨(YYYY.MM.DD(요일))
+    function dateKorean(d){
+      const dt = (typeof d === 'string') ? new Date(d) : d;
+      const yo = ['일','월','화','수','목','금','토'][dt.getDay()];
+      return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}(${yo})`;
     }
 
-    // ---- 초기 (IIFE로 비동기 초기화: 최상위 await 금지 회피)
+    // 재구매 = 해당 주문 품목을 장바구니에 다시 담기
+    function reorder(oid){
+      const o = orders.find(x=>x.id===oid);
+      if(!o) return;
+      o.items.forEach(i=>{
+        const ex = cart.find(c=>c.id===i.productId);
+        if(ex) ex.qty += i.qty;
+        else cart.push({ id: i.productId, qty: i.qty });
+      });
+      localStorage.setItem('cart', JSON.stringify(cart));
+      document.getElementById('cartCount').textContent = cart.reduce((s,i)=>s+i.qty,0);
+      openCart(); renderCart();
+    }
+
+    function renderOrders(){
+      const wrap = document.getElementById('ordersWrap');
+      if(!orders || orders.length===0){ wrap.innerHTML='<div class="empty">아직 주문이 없습니다.</div>'; return; }
+
+      // 날짜별 그룹
+      const groups = {};
+      orders.forEach(o=>{
+        const dt = new Date(o.createdAt);
+        const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+        (groups[key] ||= []).push(o);
+      });
+      const dayKeys = Object.keys(groups).sort((a,b)=> b.localeCompare(a)); // 최신 먼저
+
+      let html = '';
+      for(const key of dayKeys){
+        const list = groups[key];
+        const [y,m,d] = key.split('-').map(Number);
+        const label = dateKorean(new Date(y,m-1,d));
+        html += `<div class="order-group">
+          <div class="order-date">${label}</div>
+          ${list.map(o=>{
+            const timeStr = new Date(o.createdAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+            const totalQty = o.items.reduce((s,i)=>s+i.qty,0);
+            return `
+              <div class="order-card">
+                <div class="order-head">
+                  <div class="status">구매 확정</div>
+                  <div class="order-no">${o.id}</div>
+                </div>
+                <div class="order-body">
+                  ${o.items.map(i=>`
+                    <div class="order-item">
+                      <div class="order-thumb">
+                        ${i.imageUrl ? `<img src="${i.imageUrl}" alt="">` : '<span style="opacity:.35">IMG</span>'}
+                      </div>
+                      <div>
+                        <div class="order-title">${i.name || ''}</div>
+                        <div class="order-sub">${fmt(i.price)} · ${i.qty}개</div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+                <div class="order-total">
+                  <div>주문시각&nbsp; ${timeStr}</div>
+                  <div>총 수량&nbsp; <strong>${totalQty}</strong></div>
+                  <div>합계&nbsp; <strong>${fmt(o.total)}</strong></div>
+                </div>
+                <div class="order-actions">
+                  <button class="btn ghost" onclick="alert('구색용: 리뷰 작성은 미구현')">후기 작성</button>
+                  <button class="btn ghost" onclick="alert('구색용: 배송 조회는 미구현')">배송 조회</button>
+                  <button class="btn primary" onclick='reorder("${o.id}")'>재구매</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>`;
+      }
+      wrap.innerHTML = html;
+    }
+
+    // ---- 초기 (IIFE 비동기 초기화)
     document.getElementById('cartCount').textContent =
       (Array.isArray(cart) ? cart.reduce((s,i)=>s+i.qty,0) : 0);
 
